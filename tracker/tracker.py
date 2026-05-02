@@ -1,16 +1,15 @@
-# socket + rastreamento
-
 import socket
 import json
 from handlers import handle_register, handle_list, handle_lookup
 
 HOST = '0.0.0.0'
-PORT = 5000
+PORT = 5001
 
 def start_tracker():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind((HOST, PORT))
-    server.listen()
+    server.listen(5)
 
     print(f"[TRACKER] Rodando em {HOST}:{PORT}")
 
