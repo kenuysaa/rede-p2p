@@ -1,18 +1,17 @@
+import os
 import socket
 import json
 
-TRACKER_HOST = "127.0.0.1"
-TRACKER_PORT = 5000
+TRACKER_HOST = os.getenv("TRACKER_HOST", "127.0.0.1")
+TRACKER_PORT = int(os.getenv("TRACKER_PORT", "5001"))
 
-def send_request(request):
-    try: # comunicacao TCP
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((TRACKER_HOST, TRACKER_PORT))
 
-        s.send(json.dumps(request).encode())
-
-        response = s.recv(4096).decode()
-        s.close()
+def send_request(request, host=TRACKER_HOST, port=TRACKER_PORT):
+    try:  # comunicacao TCP
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((host, port))
+            s.send(json.dumps(request).encode())
+            response = s.recv(4096).decode()
 
         return json.loads(response)
 

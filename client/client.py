@@ -1,63 +1,85 @@
 import os
+import socket
+from pathlib import Path
 from tracker_client import send_request
 from utils import get_file_hash
 
-PORT = 5001
-SHARED_FOLDER = "../shared"
-
+BASE_DIR = Path(__file__).resolve().parent
+SHARED_FOLDER = BASE_DIR.parent / "shared"
+TRACKER_HOST = os.getenv("TRACKER_HOST", "127.0.0.1")
+TRACKER_PORT = int(os.getenv("TRACKER_PORT", "5001"))
 AUTHOR = "Guilherme"
 DISCIPLINE = "REDES"
 
+
+def get_local_ip():
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
+    except Exception:
+        return "127.0.0.1"
+
+
 def register():
+    if not SHARED_FOLDER.exists():
+        print(f"[ERRO] Pasta compartilhada não encontrada: {SHARED_FOLDER}")
+        return
+
     files = []
 
-    for filename in os.listdir(SHARED_FOLDER):
-        filepath = os.path.join(SHARED_FOLDER, filename)
-
-        if os.path.isfile(filepath):
-            file_hash = get_file_hash(filepath)
-
-            file_data = {
-                "name": filename,
+    for entry in SHARED_FOLDER.iterdir():
+        if entry.is_file():
+            file_hash = get_file_hash(entry)
+            files.append({
+                "name": entry.name,
                 "discipline": DISCIPLINE,
                 "author": AUTHOR,
-                "type": filename.split(".")[-1],
+                "type": entry.suffix.lstrip("."),
                 "hash": file_hash
-            }
+            })
 
-            files.append(file_data)
+    if not files:
+        print("Nenhum arquivo encontrado em shared/. Adicione arquivos à pasta shared e tente novamente.")
+        return
 
     request = {
         "type": "REGISTER",
-        "ip": "127.0.0.1",
-        "port": PORT,
+        "ip": get_local_ip(),
+        "port": TRACKER_PORT,
         "files": files
     }
 
-    response = send_request(request)
+    response = send_request(request, host=TRACKER_HOST, port=TRACKER_PORT)
     print("[REGISTER]", response)
+
 
 def list_files():
     request = {"type": "LIST"}
-    response = send_request(request)
+    response = send_request(request, host=TRACKER_HOST, port=TRACKER_PORT)
 
     print("\n[ARQUIVOS DISPONÍVEIS]")
 
     if response and "files" in response:
         for f in response["files"]:
-            print(f"- {f['name']} ({f['discipline']}) [{f['hash']}]")
+            print(f"- {f['name']} ({f['discipline']}) | hash={f['hash']}")
     else:
         print("Nenhum arquivo encontrado")
+
 
 def lookup():
     file_hash = input("Digite o hash do arquivo: ")
 
+    if not file_hash.strip():
+        print("Hash inválido. Tente novamente.")
+        return
+
     request = {
         "type": "LOOKUP",
-        "hash": file_hash
+        "hash": file_hash.strip()
     }
 
-    response = send_request(request)
+    response = send_request(request, host=TRACKER_HOST, port=TRACKER_PORT)
 
     print("\n[PEERS DISPONÍVEIS]")
 
@@ -67,14 +89,23 @@ def lookup():
     else:
         print("Nenhum peer encontrado")
 
-def main():
-    while True:
-        print("\n1 - REGISTER")
-        print("2 - LIST")
-        print("3 - LOOKUP")
-        print("0 - SAIR")
 
-        op = input(">> ")
+def print_menu():
+    print("\n--- REDE P2P SIMPLES ---")
+    print(f"Tracker: {TRACKER_HOST}:{TRACKER_PORT}")
+    print("1 - Registrar arquivos no tracker")
+    print("2 - Listar arquivos disponíveis")
+    print("3 - Buscar peers por hash")
+    print("0 - Sair")
+
+
+def main():
+    print("Rede P2P simples para trabalho acadêmico de Sistemas Distribuídos")
+    print(f"Pasta compartilhada: {SHARED_FOLDER}")
+
+    while True:
+        print_menu()
+        op = input(">> ").strip()
 
         if op == "1":
             register()
@@ -83,7 +114,10 @@ def main():
         elif op == "3":
             lookup()
         elif op == "0":
+            print("Saindo...")
             break
+        else:
+            print("Opção inválida. Digite 0, 1, 2 ou 3.")
 
 
 if __name__ == "__main__":
