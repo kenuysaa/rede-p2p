@@ -1,15 +1,14 @@
-import socket
+import socket 
 import json
 from handlers import handle_register, handle_list, handle_lookup
+from config import HOST, PORT, BACKLOG, BUFFER_SIZE
 
-HOST = '0.0.0.0'
-PORT = 5001
 
 def start_tracker():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind((HOST, PORT))
-    server.listen(5)
+    server.listen(BACKLOG)
 
     print(f"[TRACKER] Rodando em {HOST}:{PORT}")
 
@@ -18,7 +17,7 @@ def start_tracker():
         print(f"[CONEXÃO] Cliente conectado: {addr}")
 
         try:
-            data = conn.recv(4096).decode()
+            data = conn.recv(BUFFER_SIZE).decode()
 
             if not data:
                 conn.close()
