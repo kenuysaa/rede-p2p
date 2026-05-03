@@ -1,15 +1,7 @@
-import os
 import socket
-from pathlib import Path
 from tracker_client import send_request
 from utils import get_file_hash
-
-BASE_DIR = Path(__file__).resolve().parent
-SHARED_FOLDER = BASE_DIR.parent / "shared"
-TRACKER_HOST = os.getenv("TRACKER_HOST", "127.0.0.1")
-TRACKER_PORT = int(os.getenv("TRACKER_PORT", "5001"))
-AUTHOR = "Guilherme"
-DISCIPLINE = "REDES"
+from config import SHARED_FOLDER, TRACKER_HOST, TRACKER_PORT, PEER_PORT, AUTHOR, DISCIPLINE
 
 
 def get_local_ip():
@@ -46,7 +38,7 @@ def register():
     request = {
         "type": "REGISTER",
         "ip": get_local_ip(),
-        "port": TRACKER_PORT,
+        "port": PEER_PORT,
         "files": files
     }
 
