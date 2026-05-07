@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rede P2P Academica</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <main class="container">
+    <header class="top">
+      <h1>Rede P2P Academica</h1>
+      <p>Distribuicao colaborativa de materiais entre discentes</p>
+    </header>
+
+    <section class="card status-grid">
+      <div><strong>Tracker:</strong> {{ tracker_host }}:{{ tracker_port }}</div>
+      <div><strong>Peer Port:</strong> {{ peer_port }}</div>
+      <div><strong>Autor:</strong> {{ author }}</div>
+      <div><strong>Disciplina:</strong> {{ discipline }}</div>
+      <div><strong>Meu IP:</strong> <span id="myIp">carregando...</span></div>
+    </section>
+
+    <section class="card actions">
+      <button id="btnRegister">Registrar meus arquivos</button>
+      <button id="btnList">Listar arquivos da rede</button>
+    </section>
+
+    <section class="card">
+      <h2>Buscar peers por hash</h2>
+      <div class="inline-form">
+        <input id="lookupHash" type="text" placeholder="Informe o hash do arquivo">
+        <button id="btnLookup">Buscar</button>
+      </div>
+      <ul id="peerList" class="list"></ul>
+    </section>
+
+    <section class="card">
+      <h2>Arquivos disponiveis</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Disciplina</th>
+            <th>Autor</th>
+            <th>Tipo</th>
+            <th>Hash</th>
+          </tr>
+        </thead>
+        <tbody id="filesBody"></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Download de arquivo</h2>
+      <div class="download-grid">
+        <select id="downloadFileSelect">
+          <option value="">Selecione um arquivo da lista</option>
+        </select>
+        <input id="downloadIp" type="text" placeholder="IP do peer">
+        <input id="downloadPort" type="number" placeholder="Porta do peer (opcional)">
+        <input id="downloadHash" type="text" placeholder="Hash do arquivo">
+        <input id="downloadFilename" type="text" placeholder="Nome do arquivo (ex: aula.pdf)">
+      </div>
+      <button id="btnDownload">Iniciar download</button>
+    </section>
+
+    <section class="card">
+      <h2>Mensagens</h2>
+      <pre id="messages"></pre>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
