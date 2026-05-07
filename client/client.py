@@ -1,80 +1,112 @@
-import os
+import socket
+import threading
+from pathlib import Path
 from tracker_client import send_request
 from utils import get_file_hash
+from peer_server import start_peer_server
+from downloader import download_file_from_peer
+from config import SHARED_FOLDER, TRACKER_HOST, TRACKER_PORT, PEER_PORT, AUTHOR, DISCIPLINE
 
-PORT = 5001
-SHARED_FOLDER = "../shared"
+def get_local_ip():
+    """Tenta descobrir o IP real da máquina na rede local."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
+    except Exception:
+        return "127.0.0.1"
 
-AUTHOR = "Guilherme"
-DISCIPLINE = "REDES"
+def ensure_shared_folder():
+    """Garante que a pasta 'shared' existe para evitar erros."""
+    if not SHARED_FOLDER.exists():
+        SHARED_FOLDER.mkdir(parents=True, exist_ok=True)
+        print(f"[INFO] Pasta '{SHARED_FOLDER}' criada.")
 
 def register():
+    ensure_shared_folder()
     files = []
 
-    for filename in os.listdir(SHARED_FOLDER):
-        filepath = os.path.join(SHARED_FOLDER, filename)
+    for entry in SHARED_FOLDER.iterdir():
+        if entry.is_file():
+            file_hash = get_file_hash(entry)
+            if file_hash:
+                files.append({
+                    "name": entry.name,
+                    "discipline": DISCIPLINE,
+                    "author": AUTHOR,
+                    "type": entry.suffix.lstrip("."),
+                    "hash": file_hash
+                })
 
-        if os.path.isfile(filepath):
-            file_hash = get_file_hash(filepath)
-
-            file_data = {
-                "name": filename,
-                "discipline": DISCIPLINE,
-                "author": AUTHOR,
-                "type": filename.split(".")[-1],
-                "hash": file_hash
-            }
-
-            files.append(file_data)
+    if not files:
+        print("Nenhum arquivo encontrado. Adicione arquivos à pasta 'shared' e tente novamente.")
+        return
 
     request = {
         "type": "REGISTER",
-        "ip": "127.0.0.1",
-        "port": PORT,
+        "ip": get_local_ip(),
+        "port": PEER_PORT,
         "files": files
     }
 
-    response = send_request(request)
-    print("[REGISTER]", response)
+    response = send_request(request, host=TRACKER_HOST, port=TRACKER_PORT)
+    if response and response.get("status") == "OK":
+        print(f"[REGISTER] {len(files)} arquivos registrados com sucesso!")
+    else:
+        print(f"[REGISTER] Erro no registro: {response}")
 
 def list_files():
     request = {"type": "LIST"}
-    response = send_request(request)
+    response = send_request(request, host=TRACKER_HOST, port=TRACKER_PORT)
 
-    print("\n[ARQUIVOS DISPONÍVEIS]")
-
-    if response and "files" in response:
+    print("\n[ARQUIVOS DISPONÍVEIS NA REDE]")
+    if response and "files" in response and response["files"]:
         for f in response["files"]:
-            print(f"- {f['name']} ({f['discipline']}) [{f['hash']}]")
+            print(f"- {f['name']} ({f['discipline']}) | Autor: {f['author']} | Hash: {f['hash']}")
     else:
-        print("Nenhum arquivo encontrado")
+        print("Nenhum arquivo encontrado no Tracker.")
 
 def lookup():
-    file_hash = input("Digite o hash do arquivo: ")
+    file_hash = input("Digite o hash do arquivo: ").strip()
 
-    request = {
-        "type": "LOOKUP",
-        "hash": file_hash
-    }
+    if not file_hash:
+        print("Hash inválido.")
+        return
 
-    response = send_request(request)
+    request = {"type": "LOOKUP", "hash": file_hash}
+    response = send_request(request, host=TRACKER_HOST, port=TRACKER_PORT)
 
-    print("\n[PEERS DISPONÍVEIS]")
-
+    print("\n[PEERS QUE POSSUEM O ARQUIVO]")
     if response and "peers" in response:
         for p in response["peers"]:
-            print(f"{p['ip']}:{p['port']} | score={p['score']:.2f}")
+            print(f"-> {p['ip']}:{p['port']} | Reputação: {p['score']:.4f}")
     else:
-        print("Nenhum peer encontrado")
+        print("Nenhum peer encontrado para este hash.")
+
+def print_menu():
+    print("\n" + "="*30)
+    print("      REDE P2P ACADÊMICA")
+    print("="*30)
+    print(f"Tracker: {TRACKER_HOST}:{TRACKER_PORT}")
+    print(f"Meu IP: {get_local_ip()} | Porta de Upload: {PEER_PORT}")
+    print("-" * 30)
+    print("1 - Registrar meus arquivos")
+    print("2 - Listar todos os arquivos")
+    print("3 - Buscar por Hash (Ver reputação)")
+    print("4 - Baixar arquivo de um Peer (Download)")
+    print("0 - Sair")
+    print("-" * 30)
 
 def main():
-    while True:
-        print("\n1 - REGISTER")
-        print("2 - LIST")
-        print("3 - LOOKUP")
-        print("0 - SAIR")
+    ensure_shared_folder()
+    
+    # Inicia o servidor de upload (Peer Server) em uma thread separada
+    print("[INFO] Iniciando servidor de upload em background...")
+    threading.Thread(target=start_peer_server, daemon=True).start()
 
-        op = input(">> ")
+    while True:
+        print_menu()
+        op = input("Escolha uma opção >> ").strip()
 
         if op == "1":
             register()
@@ -82,9 +114,20 @@ def main():
             list_files()
         elif op == "3":
             lookup()
+        elif op == "4":
+            print("\n[DOWNLOAD]")
+            target_ip = input("IP do Peer: ").strip()
+            target_hash = input("Hash do arquivo: ").strip()
+            fname = input("Nome exato do arquivo (ex: aula.pdf): ").strip()
+            
+            # Usa PEER_PORT para garantir consistência com o servidor do outro peer
+            sucesso, msg = download_file_from_peer(target_ip, PEER_PORT, target_hash, fname)
+            print(f"\n[DOWNLOAD STATUS] {msg}")
         elif op == "0":
+            print("Encerrando...")
             break
-
+        else:
+            print("Opção inválida.")
 
 if __name__ == "__main__":
     main()

@@ -1,21 +1,23 @@
 import socket
 import json
+from config import TRACKER_HOST, TRACKER_PORT, BUFFER_SIZE
 
-TRACKER_HOST = "127.0.0.1"
-TRACKER_PORT = 5000
-
-def send_request(request):
-    try: # comunicacao TCP
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((TRACKER_HOST, TRACKER_PORT))
-
-        s.send(json.dumps(request).encode())
-
-        response = s.recv(4096).decode()
-        s.close()
+def send_request(request, host=TRACKER_HOST, port=TRACKER_PORT):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(5.0) # Previne congelamento se o Tracker não responder
+            s.connect((host, port))
+            s.send(json.dumps(request).encode('utf-8'))
+            response = s.recv(BUFFER_SIZE).decode('utf-8')
 
         return json.loads(response)
 
+    except socket.timeout:
+        print("[ERRO] Tempo de conexão com o Tracker esgotado.")
+        return None
+    except ConnectionRefusedError:
+        print("[ERRO] Conexão recusada. O Tracker está rodando?")
+        return None
     except Exception as e:
-        print(f"[ERRO] {e}")
+        print(f"[ERRO] Falha na comunicação: {e}")
         return None

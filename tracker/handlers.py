@@ -1,32 +1,34 @@
-# trata os comandos recebidos
 from database import register_peer, add_file, get_all_files, get_ranked_peers
 
 def handle_register(request):
-    ip = request["ip"]
-    port = request["port"]
+    ip = request.get("ip")
+    port = request.get("port")
+
+    if not ip or not port:
+        return {"error": "IP e Porta são obrigatórios"}
 
     peer_id = register_peer(ip, port)
 
-    # metadatas
-    for file in request["files"]:
+    for file in request.get("files", []):
         metadata = {
-            "name": file["name"],
-            "discipline": file["discipline"],
-            "author": file["author"],
-            "type": file["type"]
+            "name": file.get("name"),
+            "discipline": file.get("discipline"),
+            "author": file.get("author"),
+            "type": file.get("type")
         }
-
-        add_file(file["hash"], metadata, peer_id)
+        add_file(file.get("hash"), metadata, peer_id)
 
     return {"status": "OK"}
 
-def handle_list():
+def handle_list(request=None):
     return {
         "files": get_all_files()
     }
 
 def handle_lookup(request):
-    file_hash = request["hash"]
+    file_hash = request.get("hash")
+    if not file_hash:
+        return {"error": "Hash do arquivo é obrigatório"}
 
     peers = get_ranked_peers(file_hash)
 
@@ -35,4 +37,4 @@ def handle_lookup(request):
             "peers": peers
         }
 
-    return {"error": "Arquivo não encontrado"}
+    return {"error": "Arquivo não encontrado ou sem peers disponíveis"}
