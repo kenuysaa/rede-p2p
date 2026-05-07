@@ -4,7 +4,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 SHARED_FOLDER = BASE_DIR.parent / "shared"
 
-TRACKER_HOST = os.getenv("TRACKER_HOST", "127.0.0.1")
+TRACKER_HOST = "10.80.9.224"
 TRACKER_PORT = int(os.getenv("TRACKER_PORT", "5001"))
 
 PEER_PORT = int(os.getenv("PEER_PORT", "5002"))
